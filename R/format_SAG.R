@@ -229,7 +229,11 @@ format_SAG <- function(db = choose_directory(),
                     ReleaseAlive=dplyr::case_when(stringr::str_detect(.data$Observaciones,"muert") ~ FALSE,
                                 stringr::str_detect(.data$Observaciones,"restos") ~ FALSE,
                                 stringr::str_detect(.data$Observaciones,"RIP") ~ FALSE,
-                                TRUE ~ TRUE))
+                                TRUE ~ TRUE))%>%
+ #Add sex fromt the first captures
+  dplyr::left_join(rr_data_ring %>%
+                     dplyr::distinct(IndvID,Sex_observed)%>%
+                     dplyr::filter(!is.na(.data$IndvID)))
 
   ## Combine capture records
   rr_data <- dplyr::bind_rows(rr_data_ring,
@@ -240,20 +244,8 @@ format_SAG <- function(db = choose_directory(),
     dplyr::mutate(dplyr::across(c(Mass,
                                   WingLength,
                                   Tarsus), ~dplyr::na_if(., 0))) %>%
-
-    ## Sex is not always entered, but information is sometimes present from earlier years
-    ## If it is not conflicted, fill in missing values
     dplyr::group_by(.data$IndvID) %>%
-    dplyr::mutate(Sex_calculated = purrr::map_chr(.x = list(unique(stats::na.omit(.data$Sex_observed))),
-                                                  .f = ~{
-                                                    if(length(..1) == 0){
-                                                      return(NA_character_)
-                                                    } else if(length(..1) == 1){
-                                                      return(..1)
-                                                    } else {
-                                                      return(NA_character_)
-                                                    }
-                                                  }),
+    dplyr::mutate(Sex_calculated = .data$Sex_observed,#no conflicting sex because it is entered only once in the first captures
                   CaptureDate = as.Date(.data$CaptureDate),
                   CaptureMonth=as.numeric(format(.data$CaptureDate, "%m")))%>%
     dplyr::filter(CaptureMonth>3) %>%
@@ -292,8 +284,7 @@ format_SAG <- function(db = choose_directory(),
       dplyr::left_join(rr_data %>%
 
                          ## Get parents from each brood
-                         dplyr::filter(.data$table == "ringing",
-                                       (!is.na(.data$Sex_calculated) & .data$Age_observed != 1),
+                         dplyr::filter((!is.na(.data$Sex_calculated) & .data$Age_observed != 1),
                                        !is.na(.data$BroodID)) %>%
                          dplyr::select(PopID,
                                        Species,
@@ -442,23 +433,11 @@ format_SAG <- function(db = choose_directory(),
                                                   return("adult")
                                                 }
                                               }),
-                    BroodIDLaid = purrr::map_chr(.x = list(unique(stats::na.omit(.data$BroodID))),
-                                                 .f = ~{
-                                                   if(length(..1) != 1){
-                                                     return(NA_character_)
-                                                   } else if(length(..1) == 1){
-                                                     return(..1)
-                                                   }
-                                                 }),
+                    BroodIDLaid = dplyr::case_when(.data$RingAge == "adult" ~ NA_character_,
+                                                   .data$RingAge == "chick" ~ .data$BroodID),
 
                     ## No cross-fostering, so BroodIDFledged is always BroodIDLaid
                     BroodIDFledged = .data$BroodIDLaid) %>%
-
-      ## BroodIDs should be NA for any individuals ringed as adults
-      dplyr::mutate(across(c(BroodIDLaid,
-                             BroodIDFledged),
-                           ~dplyr::case_when(.data$RingAge == "adult" ~ NA_character_,
-                                             .data$RingAge == "chick" ~ .))) %>%
 
       ## Keep distinct records by PopID and InvdID
       dplyr::distinct(.data$PopID, .data$IndvID, .keep_all = TRUE) %>%
