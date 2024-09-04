@@ -61,7 +61,7 @@ format_MTA <- function(db = choose_directory(),
 
   ## 1- Get brood information from primary data
 
-  brood_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "brood_data") %>%
+  brood_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "brood_data", na= "NA") %>%
     tibble::as_tibble()%>%
     dplyr::transmute(BroodID= as.character(.data$brood_id),
                   PopID = as.character(case_when(site == "Szentgal_erdo" ~ "SZE",
@@ -106,7 +106,7 @@ format_MTA <- function(db = choose_directory(),
 
   ## 2- Get capture information from primary data
 
-  capture_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "ring_data") %>%
+  capture_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "ring_data", na= "NA") %>%
     tibble::as_tibble()%>%
     dplyr::transmute(PopID= as.character(case_when(site == "Szentgal_erdo" ~ "SZE",
                                                    site == "Veszprem" ~ "VES",
@@ -143,7 +143,7 @@ format_MTA <- function(db = choose_directory(),
     dplyr::mutate(PopID="SZE",
                   HabitatType="deciduous")
 
-  location_data_VES <- readxl::read_xlsx(path = db, guess = 5000,sheet= "coord_data_Vp") %>%
+  location_data_VES <- readxl::read_xlsx(path = db, guess = 5000,sheet= "coord_data_Vp", na= "NA") %>%
     tibble::as_tibble()%>%
     dplyr::mutate(PopID="VES",
                   HabitatType="urban")
@@ -268,8 +268,9 @@ format_MTA <- function(db = choose_directory(),
                                                   return("adult")
                                                 }
                                               }),
-                    BroodIDLaid = as.character(.data$BroodID),
-                    BroodIDFledged = as.character(.data$BroodID)) %>%
+                    BroodIDLaid = case_when(RingAge=="chick"~as.character(.data$BroodID),
+                                            TRUE~NA_character_),
+                    BroodIDFledged = BroodIDLaid) %>%
 
       ## Keep distinct records by PopID and InvdID
       dplyr::distinct(.data$PopID, .data$IndvID, .keep_all = TRUE) %>%
