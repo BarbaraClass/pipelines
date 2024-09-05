@@ -110,7 +110,10 @@ test_that("Brood_data returns an expected outcome...", {
                         BreedingSeason == 2013)$LayDate_observed, as.Date("2013-04-17"))
   expect_equal(subset(MTA_data,
                       BroodID == "250" &
-                        BreedingSeason == 2013)$ClutchSize_observed, NA_integer_)#should update clutch size min based on nr fledged?
+                        BreedingSeason == 2013)$ClutchSize_observed, NA_integer_)
+  expect_equal(subset(MTA_data,
+                      BroodID == "250" &
+                        BreedingSeason == 2013)$ClutchSize_min, 9)
   expect_equal(subset(MTA_data,
                       BroodID == "250" &
                         BreedingSeason == 2013)$NumberFledged_observed, 9)
@@ -142,6 +145,26 @@ test_that("Brood_data returns an expected outcome...", {
   #Open SZE data
   MTA_data <- dplyr::filter(pipeline_output$Brood_data, PopID %in% "SZE")
 
+  ## PARCAE  nest 2829 in 2021
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$Species, "CYACAE")#STill PARCAE
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$FemaleID,NA_character_ )
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$MaleID, NA_character_)
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$LayDate_observed, as.Date("2017-04-04"))
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$ClutchSize_observed, 13)
+  expect_equal(subset(MTA_data,
+                      BroodID == "1278" &
+                        BreedingSeason == 2017)$NumberFledged_observed, NA_integer_)
+
   ## PARMAJ nest 2829 in 2021
   expect_equal(subset(MTA_data,
                       BroodID == "2829" &
@@ -160,73 +183,128 @@ test_that("Brood_data returns an expected outcome...", {
                         BreedingSeason == 2021)$ClutchSize_observed, NA_integer_)
   expect_equal(subset(MTA_data,
                       BroodID == "2829" &
+                        BreedingSeason == 2021)$ClutchSize_min, 9)
+  expect_equal(subset(MTA_data,
+                      BroodID == "2829" &
                         BreedingSeason == 2021)$NumberFledged_observed, 8)
 })
 
 
 
-test_that("Capture_data returns an expected outcome...", {#to update
+test_that("Capture_data returns an expected outcome...", {
 
   #Open MTA data
-  MTA_data <- dplyr::filter(pipeline_output$Capture_data, CapturePopID %in% "MTA")
+  MTA_data <- dplyr::filter(pipeline_output$Capture_data, CapturePopID %in% "VES")
 
-  ##great tit 1KA34008 ringed as chick
+  ##great tit N373932 ringed as chick and recaptured as adult
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$BreedingSeason, 2015)
+                      IndvID == "N373932")$BreedingSeason, c(2021,2023))
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$CaptureDate, as.Date("2015-05-14"))
+                      IndvID == "N373932")$CaptureDate, c(as.Date("2021-05-08"),as.Date("2023-05-03")))
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$ChickAge, 14)
+                      IndvID == "N373932")$Mass, c(15.60, 18.2))
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$Mass, 15.1)
+                      IndvID == "N373932")$Tarsus, c(19.7, 20.0))
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$Tarsus, 19.3)
+                      IndvID == "N373932")$WingLength, c(44,77))
   expect_equal(subset(MTA_data,
-                      IndvID == "1KA34008")$LocationID, "84")
+                      IndvID == "N373932")$LocationID, c("V73_2021","V61_2023"))
 
+  ##great tit N435192 ringed as adult
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$BreedingSeason, 2022)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$CaptureDate, as.Date("2022-05-03"))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$Mass,19,0 )
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$Tarsus, 20.4)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$WingLength, 79)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N435192")$LocationID,"Et8_2022")
 
-  ## female 2601411
-  expect_equal(unique(subset(MTA_data,
-                             IndvID == "2601411")$BreedingSeason), c(2000,2001,2002,2003,2004))
-  expect_equal(unique(subset(MTA_data,
-                             IndvID == "2601411")$Sex_observed), "F")
-  expect_equal(unique(subset(MTA_data,
-                             IndvID == "2601411")$LocationID), c(NA,"5","51","53","154"))
-  expect_equal(unique(subset(MTA_data,
-                             IndvID == "2601411")$Tarsus), c(NA,19.4,19.6,19.0,19.3))
-  expect_equal(unique(subset(MTA_data,
-                             IndvID == "2601411")$WingLength), c(NA,72.0,73.0,75.5,75.0))
 
 })
 
-test_that("Location_data returns an expected outcome...", {#to update
+test_that("Capture_data returns an expected outcome...", {
 
   #Open MTA data
-  MTA_data <- dplyr::filter(pipeline_output$Location_data, PopID %in% "MTA")
+  MTA_data <- dplyr::filter(pipeline_output$Capture_data, CapturePopID %in% "SZE")
 
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "52")$Latitude),41.467601003 )
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "52")$Longitude), 2.147169517)
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "52")$StartSeason), 1998)
+  ##great tit N331824 ringed as chick and recaptured as adult
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$BreedingSeason, c(2018,2019))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$CaptureDate, c(as.Date("2018-05-20"),as.Date("2019-05-03")))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$Mass, c(19.0, 19.1))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$Tarsus, c(20.2, 20.2))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$WingLength, c(49,76))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N331824")$LocationID, c("Sz28_2018","Sz90_2019"))
 
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "175")$Latitude),41.468254349 )
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "175")$Longitude),2.146151032 )
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "175")$StartSeason), 2008)
+  ##great tit N172997 ringed as adult
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$BreedingSeason, 2013)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$CaptureDate, as.Date("2013-05-29"))
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$Mass,18.1 )
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$Tarsus, 19.3)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$WingLength, 71)
+  expect_equal(subset(MTA_data,
+                      IndvID == "N172997")$LocationID,"Sz62_2013")
 
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "185")$Latitude), 41.462856906)
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "185")$Longitude), 2.14061869)
-  expect_equal(unique(subset(MTA_data,
-                             LocationID == "185")$StartSeason), 2013)
 
 })
 
+test_that("Location_data returns an expected outcome...", {
+
+  #Open MTA data
+  MTA_data <- dplyr::filter(pipeline_output$Location_data, PopID %in% "SZE")
+
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz9_2016")$Latitude),47.10632 )
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz9_2016")$Longitude), 17.68699)
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz9_2016")$StartSeason), 2016)
+
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz38_2013")$Latitude),47.11415 )
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz38_2013")$Longitude),17.68577 )
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "Sz38_2013")$StartSeason), 2013)
+
+})
+
+
+test_that("Location_data returns an expected outcome...", {
+
+  #Open MTA data
+  MTA_data <- dplyr::filter(pipeline_output$Location_data, PopID %in% "VES")
+
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V9_2016")$Latitude),47.086282 )
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V9_2016")$Longitude), 17.902366)
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V9_2016")$StartSeason), 2016)
+
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V38_2013")$Latitude),47.089474 )
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V38_2013")$Longitude), 17.909747)
+  expect_equal(unique(subset(MTA_data,
+                             LocationID == "V38_2013")$StartSeason), 2013)
+
+})
 
 ### General tests (for pipelines formatted to standard protocol version 1.1.0): ALL passed
 
@@ -267,22 +345,21 @@ test_that("Column classes are as expected", {
 })
 
 
-test_that("ID columns match the expected format for the pipeline", {#fails
+test_that("ID columns match the expected format for the pipeline", {
 
   # ## FemaleID format is as expected
-  test_ID_format(pipeline_output, ID_col = "FemaleID", ID_format = "^[:alnum:]{6,8}$")
+  test_ID_format(pipeline_output, ID_col = "FemaleID", ID_format = "^[:alnum:]{7}$")
 
   # ## MaleID format is as expected
-  test_ID_format(pipeline_output, ID_col = "MaleID", ID_format = "^[:alnum:]{6,8}$")
+  test_ID_format(pipeline_output, ID_col = "MaleID", ID_format = "^[:alnum:]{7}$")
 
   # ## IndvID format in Capture data  is as expected
-  test_ID_format(pipeline_output, ID_col = "C-IndvID", ID_format = "^[:alnum:]{6,8}$")
+  test_ID_format(pipeline_output, ID_col = "C-IndvID", ID_format = "^[:alnum:]{7}$")
 
   ## IndvID format in Individual data is as expected
-  test_ID_format(pipeline_output, ID_col = "I-IndvID", ID_format = "^[:alnum:]{6,8}$")
+  test_ID_format(pipeline_output, ID_col = "I-IndvID", ID_format = "^[:alnum:]{7}$")
 
 })
-
 
 test_that("Key columns only contain unique values", {
 
@@ -314,7 +391,7 @@ test_that("Key columns in each table do not have NAs", {
 
 })
 
-test_that("Categorical columns do not have unexpected values", {#fails
+test_that("Categorical columns do not have unexpected values", {
 
   ## Brood
   test_category_columns(pipeline_output, "Brood")

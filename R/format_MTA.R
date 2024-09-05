@@ -6,7 +6,9 @@
 #'this data. For a general description of the standard format please see
 #'\href{https://github.com/SPI-Birds/documentation/blob/master/standard_protocol/SPI_Birds_Protocol_v1.1.0.pdf}{here}.
 #'
-#'\strong{BroodID}:
+#'\strong{ClutchSize_observed}: Only kept when truly observed and no uncertainty (based on column clutch_size_comment). If a clutch size was guessed based on numberfledged, it was entered in ClutchSize_min
+#'\strong{LocationID}: NA when not associated with a brood (most of the time it is not known and location ID in ringing data has errors which is why we used the location data from broods)
+
 #'@inheritParams pipeline_params
 #'
 #'@return Generates either 4 .csv files or 4 data frames in the standard format.
@@ -64,25 +66,34 @@ format_MTA <- function(db = choose_directory(),
   brood_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "brood_data", na= "NA") %>%
     tibble::as_tibble()%>%
     dplyr::transmute(BroodID= as.character(.data$brood_id),
-                  PopID = as.character(case_when(site == "Szentgal_erdo" ~ "SZE",
+                  PopID = as.character(dplyr::case_when(site == "Szentgal_erdo" ~ "SZE",
                                     site == "Veszprem" ~ "VES",
                                     TRUE ~ site)),
 
                   BreedingSeason=as.integer(.data$year),
-                  Species=as.character(.data$species),
+                  Species=as.character(dplyr::case_when(species == "PARMAJ" ~ species_codes[species_codes$SpeciesID==14640,"Species"],
+                                                        species == "PARCAE" ~ species_codes[species_codes$SpeciesID==14620,"Species"],
+                                                        species == "FICALB" ~ species_codes[species_codes$SpeciesID==13480,"Species"],
+                                                        species == "PARATE" ~ species_codes[species_codes$SpeciesID==14610,"Species"],
+                                                        species == "PARPAL" ~ species_codes[species_codes$SpeciesID==14400,"Species"],
+                                                        species == "SITEUR" ~ species_codes[species_codes$SpeciesID==14790,"Species"],
+                                                        TRUE ~ site)),
                   Plot=NA_character_,
                   LocationID=as.character(paste(.data$nestbox_new, .data$year,sep="_")),
                   FemaleID=as.character(.data$mother_ID),
-                  MaleID=as.character(.data$father_ID),
+                  MaleID=dplyr::case_when(grepl("x", ignore.case=FALSE,.data$father_ID)~NA_character_,
+                                   grepl("?", fixed=TRUE,.data$father_ID)~NA_character_,
+                                   TRUE~as.character(.data$father_ID)),
                   ClutchType_observed = NA_character_,
                   LayDate_observed = as.Date(.data$firstegg_date),
                   LayDate_min = as.Date(NA),
                   LayDate_max = as.Date(NA),
-                  ClutchSize_observed = as.integer(case_when(.data$clutch_size_comment==1~.data$clutch_size,
+                  ClutchSize_observed = as.integer(dplyr::case_when(.data$clutch_size_comment==1~.data$clutch_size,
                                                              TRUE~NA)),
-                  ClutchSize_min = NA_integer_,
+                  ClutchSize_min = as.integer(dplyr::case_when(.data$clutch_size_comment==2~.data$clutch_size,
+                                                               TRUE~NA)),
                   ClutchSize_max = NA_integer_,
-                  HatchDate_observed = as.Date(NA),#apparently not available?
+                  HatchDate_observed = as.Date(NA),# not sent by data owner
                   HatchDate_min = as.Date(NA),
                   HatchDate_max = as.Date(NA),
                   BroodSize_observed = NA_integer_,
@@ -97,7 +108,7 @@ format_MTA <- function(db = choose_directory(),
                   AvEggMass = NA_real_,
                   NumberEggs = NA_integer_,
                   OriginalTarsusMethod = "Alternative",
-                  ExperimentID = NA_character_) %>%# Add the calculated clutch type later
+                  ExperimentID = NA_character_) %>%#no information provided
     dplyr::filter(is.na(ClutchSize_observed) |ClutchSize_observed>0)%>%
     dplyr::filter(!(is.na(.data$ClutchSize_observed)&#remove nests in which nothing happened
                       is.na(.data$LayDate_observed)&
@@ -108,33 +119,32 @@ format_MTA <- function(db = choose_directory(),
 
   capture_data <- readxl::read_xlsx(path = db, guess = 5000,sheet= "ring_data", na= "NA") %>%
     tibble::as_tibble()%>%
-    dplyr::transmute(PopID= as.character(case_when(site == "Szentgal_erdo" ~ "SZE",
+    dplyr::transmute(PopID= as.character(dplyr::case_when(site == "Szentgal_erdo" ~ "SZE",
                                                    site == "Veszprem" ~ "VES",
                                                    TRUE ~ site)),
                      IndvID=as.character(.data$ringid),
                      Species=as.character(.data$species),
-                     Sex_observed=as.character(case_when(.data$sex == "female" ~ "F", .data$sex == "male" ~ "M",TRUE ~ .data$sex)),
+                     Sex_observed=as.character(dplyr::case_when(.data$sex == "female" ~ "F", .data$sex == "male" ~ "M",TRUE ~ .data$sex)),
                      BreedingSeason=as.integer(.data$year),
                      CaptureDate=as.Date(.data$date),
                      CaptureTime= NA_character_,
                      ObserverID=as.character(.data$observer),
-                     LocationID=as.character(paste(.data$nestbox_new, .data$year,sep="_")),
                      CaptureAlive=as.logical(NA),
                      ReleaseAlive=as.logical(NA),
                      CapturePopID=PopID,
                      CapturePlot=NA_character_,
                      ReleasePopID=PopID,
                      ReleasePlot=NA_character_,
-                     Mass=.data$mass,
-                     Tarsus=.data$tarsus,
+                     Mass=as.numeric(round(.data$mass,1)),
+                     Tarsus=as.numeric(round(.data$tarsus,1)),
                      OriginalTarsusMethod="Alternative",#check with data custodian
-                     WingLength=.data$wing,
-                     Age_observed=as.integer(case_when(.data$age == "pull" ~ "1", .data$age == "1y" ~ "3", .data$age == "1+" ~ "4", .data$age == "2y" ~ "5",
+                     WingLength=as.numeric(round(.data$wing,0)),
+                     Age_observed=as.integer(dplyr::case_when(.data$age == "pull" ~ "1", .data$age == "1y" ~ "3", .data$age == "1+" ~ "4", .data$age == "2y" ~ "5",
                                             .data$age == "2+" ~ "6", .data$age == "F" ~ NA_character_, TRUE ~ NA_character_)),#check with data custodian
-                     ChickAge=as.integer(NA),#NA because hatching date is unknown
+                     ChickAge=as.integer(NA),#NA because hatching date is not provided
                      ExperimentID=NA_character_,
-                     BroodID=as.character(.data$brood_id))%>%#check with data custodian
-  dplyr::ungroup()#Very few ringed chicks (118). Is this normal?
+                     BroodID=as.character(.data$brood_id))%>%
+  dplyr::ungroup()#Very few ringed chicks (118). Is this normal? Yes: Only provided data of on recruits
 
   ### 3- Get location information from primary data
 
@@ -195,11 +205,13 @@ format_MTA <- function(db = choose_directory(),
 
   #' Create capture data table in standard format for data from MTA, Hungary
   #'
-  #' @param capture_data Data frame. Primary data from ringing records.
+  #' @param brood_data Brood data compiled from primary data from MTA, Hungary
+  #'
+  #' @param capture_data Ringing data compiled from primary data from MTA, Hungary
   #'
   #' @return A data frame.
 
-  create_capture_MTA <- function(capture_data) {
+  create_capture_MTA <- function(capture_data,brood_data) {
 
     ## Captures from ringing data
     Capture_data_temp <- capture_data %>%
@@ -220,6 +232,11 @@ format_MTA <- function(db = choose_directory(),
       #Add age_calculated
       calc_age(ID = .data$IndvID, Age = .data$Age_observed,
                Date = .data$CaptureDate, Year = .data$BreedingSeason) %>%
+
+      #Add LocationID from brood data
+      dplyr::left_join(brood_data %>%
+                         dplyr::select(BroodID,
+                                       LocationID))
 
 
       return(Capture_data_temp)
@@ -268,7 +285,7 @@ format_MTA <- function(db = choose_directory(),
                                                   return("adult")
                                                 }
                                               }),
-                    BroodIDLaid = case_when(RingAge=="chick"~as.character(.data$BroodID),
+                    BroodIDLaid = dplyr::case_when(RingAge=="chick"~as.character(.data$BroodID),
                                             TRUE~NA_character_),
                     BroodIDFledged = BroodIDLaid) %>%
 
@@ -324,7 +341,7 @@ format_MTA <- function(db = choose_directory(),
 
   message("Compiling capture information...")
 
-  Capture_data_temp <- create_capture_MTA(capture_data)
+  Capture_data_temp <- create_capture_MTA(capture_data,brood_data)
 
 
   # INDIVIDUAL DATA
