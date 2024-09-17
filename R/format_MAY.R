@@ -296,8 +296,6 @@ create_brood_MAY <- function(gt_data,
                              pf_data,
                              species_filter,
                              optional_variables) {
-  #optional_variables=c("breedingSeason","calculatedClutchType","nestAttemptNumber")
-  #species_filter="PARMAJ"
 
     # Pied flycatcher data
     pf_broods <- pf_data %>%
@@ -614,7 +612,7 @@ create_capture_MAY <- function(gt_data,
                                               TRUE ~ NA_character_),
                   maleID = dplyr::case_when(stringr::str_detect(.data$maleID, "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$maleID,
                                             TRUE ~ NA_character_)) %>%
-    # Treat capture date as the start of incubation (i.e., laying date + clutch size)
+    # Treat capture date as the start of incubation (i.e., laying date + clutch size)# It should be when chicks are 7-14 days old (see Artemyev 2008)
     # TODO: Check with data custodian, and what to do with cases where laying date is NA
     # Convert dates from May days (1 = 1st of May) to year, month, day
     # Days formatted as e.g., "<32", ">32", "32?", "(32)" or "?" are interpreted without the special characters
@@ -1091,7 +1089,7 @@ create_experiment_MAY <- function(brood_data) {
 #'
 #' retrieve_chickIDs_MAY("856840,1,55-62")
 #' retrieve_chickIDs_MAY("XV 54798-800; XE 63101")
-#'
+#' retrieve_chickIDs_MAY("177497-0+XB721822-3")
 
 retrieve_chickIDs_MAY <- function(chickID) {
 
@@ -1104,8 +1102,6 @@ retrieve_chickIDs_MAY <- function(chickID) {
   #Fix potential double dashes e.g. "XJ 98280-86-29" (happened only once so far): remove the extra dash and 2 digits
   if(!is.na(chickID) & stringr::str_detect(chickID, pattern = "[\\-][:digit:]{2}[\\-][:digit:]{2}")==TRUE){
     chickID <- stringr::str_extract_all(chickID, pattern = "[:alpha:]{2}[:space:][:digit:]{5}[\\-][:digit:]{2}")
-    #chickID <- stringr::str_replace_all(chickID, pattern = "(?<=[\\-][:digit:]{2})[\\-](?=[:digit:]{2})", replacement = ",")#option 2 is to replace with a comma but then 8 rings which is > than the number of chicks reported
-
   }
 
 
@@ -1113,11 +1109,19 @@ retrieve_chickIDs_MAY <- function(chickID) {
   chickID <- stringr::str_remove_all(chickID, pattern = " ")
   chickID <- stringr::str_remove_all(chickID, pattern = "\\(.*\\)")
 
-  #Remove everything that follows a "+" (as in "+1 without a ring")
-  chickID <- strsplit(chickID,"\\+")[[1]][1]
+  #Remove everything that follows a "+" if followed by "without"or Cyrillic characters, otherwise replace + by a comma
+  chickID.tmp <- strsplit(chickID,"\\+")[[1]]
+  if(!is.na(chickID) & sum(str_detect(chickID.tmp,pattern="without")) + sum(str_detect(chickID.tmp,pattern="[\\p{Cyrillic}]"))>0) {
+    chickID <- strsplit(chickID,"\\+")[[1]][1]
+  }
 
+  chickID <- stringr::str_replace_all(chickID, pattern = "\\+", replacement = ",")
   # Replace semicolons and pluses by commas
   chickID <- stringr::str_replace_all(chickID, pattern = ";", replacement = ",")
+
+  #replace 00 or 000 by 0
+  chickID <- stringr::str_replace_all(chickID, pattern = "-00", replacement = "-0")
+  chickID <- stringr::str_replace_all(chickID, pattern = "-000", replacement = "-0")
 
   # Set chickID to NA if format is not a series, i.e.,
   # - if it does not contain "-" or ","
@@ -1202,7 +1206,11 @@ retrieve_chickIDs_MAY <- function(chickID) {
 
                                    ref_length <- nchar(id_series[id_ref[1]])
                                    no_length <- nchar(id_series[.x])
+                                   if (no_length==1 & id_series[.x]==0){#special case when the next number ends a 0  like in 999-0 (need to make sure the ring series goes up and not down)
+                                       as.character(seq(as.numeric(id_series[id_ref[1]]),as.numeric(id_series[id_ref[1]]) +14 ))[min(grep("0$",as.character(seq(as.numeric(id_series[id_ref[1]]),as.numeric(id_series[id_ref[1]]) +14 ))))]#add 14 and find the first number that ends with 0
+                                   }
 
+                                   else
                                    paste0(stringr::str_sub(id_series[1], start = 1, end = ref_length - no_length),
                                           id_series[.x])
 
