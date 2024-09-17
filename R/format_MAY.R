@@ -43,6 +43,9 @@ format_MAY <- function(db = choose_directory(),
   # Force choose_directory() if used
   force(db)
 
+  #Assign to database location
+  db <- paste0(gsub("\\\\", "/", db), "\\MAY_PrimaryData.xls")
+
   # Assign species for filtering
   if(is.null(species)){
 
@@ -59,8 +62,7 @@ format_MAY <- function(db = choose_directory(),
   message("Importing primary data...")
 
   # Read in pied flycatcher data
-  pf_data <- suppressMessages(readxl::read_excel(paste0(db, "/MAY_PrimaryData_PF.xls"),
-                                                 guess_max = 4000) %>%
+  pf_data <- suppressMessages(readxl::read_xls(path=db,sheet="Ficedula hypoleuca 1979-2023 ",guess = 4000) %>%
                                 # Convert all cols to snake_case
                                 janitor::clean_names() %>%
                                 # Create IDs
@@ -89,9 +91,7 @@ format_MAY <- function(db = choose_directory(),
                               )
 
   # Read in great tit data
-  gt_data <- suppressMessages(readxl::read_excel(paste0(db, "/MAY_PrimaryData_GT.xlsx"),
-                                                 skip = 1,
-                                                 guess_max = 500) %>%
+  gt_data <- suppressMessages(readxl::read_xls(path=db,sheet="Parus_major 1979-2023" ,guess = 4000,range=c("A2:V549")) %>%
                                 # Remove trailing columns that contain no information
                                 dplyr::select(1:22) %>%
                                 # Convert all cols to snake_case
@@ -296,12 +296,15 @@ create_brood_MAY <- function(gt_data,
                              pf_data,
                              species_filter,
                              optional_variables) {
+  #optional_variables=c("breedingSeason","calculatedClutchType","nestAttemptNumber")
+  #species_filter="PARMAJ"
 
     # Pied flycatcher data
     pf_broods <- pf_data %>%
+      dplyr::filter(!is.na(.data$year))%>%
       # Create female & male IDs
-      tidyr::unite(femaleID, .data$females_ring_series, .data$females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
-      tidyr::unite(maleID, .data$males_ring_series, .data$males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+      tidyr::unite(femaleID, females_ring_series, females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+      tidyr::unite(maleID,males_ring_series, males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
       dplyr::mutate(dplyr::across(.cols = c("femaleID", "maleID"),
                                   .fns = ~{
 
@@ -423,8 +426,8 @@ create_brood_MAY <- function(gt_data,
   # Great tit data
   gt_broods <- gt_data %>%
     # Create female & male IDs
-    tidyr::unite(femaleID, .data$females_ring_series, .data$females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
-    tidyr::unite(maleID, .data$males_ring_series, .data$males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(femaleID, females_ring_series, females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(maleID, males_ring_series, males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
     dplyr::mutate(dplyr::across(.cols = c("femaleID", "maleID"),
                                 .fns = ~{
 
@@ -505,6 +508,7 @@ create_brood_MAY <- function(gt_data,
     # Convert numbers (clutch size, brood size, fledgling number)
     # Values formatted as e.g. "7+4" are interpreted as arithmetic calculations (i.e., value is 11)
     # Values formatted as e.g. "(4)" or "5?" are interpreted without the special characters
+    # Values formatted as e.g. ">6" or are interpreted without the special characters (?). Or put it in minimum columns?
     # TODO: Check with data custodian
     dplyr::mutate(dplyr::across(.cols = c("clutch_size_in_brackets_possibly_number_of_eggs",
                                           "number_of_hatched_nestlings_in_brackets_possibly_number_of_nestlings",
@@ -513,6 +517,7 @@ create_brood_MAY <- function(gt_data,
 
                                   dplyr::case_when(
                                     stringr::str_detect(.x, "\\?") ~ dplyr::na_if(stringr::str_remove(.x, "\\?"), ""),
+                                    stringr::str_detect(.x, "\\>") ~ dplyr::na_if(stringr::str_remove(.x, "\\>"), ""),
                                     stringr::str_detect(.x, "\\(") ~ stringr::str_extract(.x, "(?<=\\()[:digit:]{1,2}(?=\\))"),
                                     stringr::str_detect(.x, ".*[:alpha:]+.*") ~ NA_character_,
                                     TRUE ~ .x
@@ -594,9 +599,10 @@ create_capture_MAY <- function(gt_data,
 
   # 1. Retrieve capture information of pied flycatcher parents
   pf_parents <- pf_data %>%
+    dplyr::filter(!is.na(.data$year))%>%
     # Create female & male IDs
-    tidyr::unite(femaleID, .data$females_ring_series, .data$females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
-    tidyr::unite(maleID, .data$males_ring_series, .data$males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(femaleID, females_ring_series, females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(maleID, males_ring_series, males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
     dplyr::mutate(dplyr::across(.cols = c("femaleID", "maleID"),
                                 .fns = ~{
 
@@ -686,7 +692,7 @@ create_capture_MAY <- function(gt_data,
 
                                             })) %>%
     # Unnest to long format (i.e., each chick in a row)
-    tidyr::unnest(cols = .data$individualID) %>%
+    tidyr::unnest(cols = individualID) %>%
     # Still some errors may persist. Check format used for femaleID/maleID
     dplyr::mutate(individualID = dplyr::case_when(stringr::str_detect(.data$individualID,
                                                                       "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$individualID,
@@ -726,9 +732,10 @@ create_capture_MAY <- function(gt_data,
 
   # 3. Retrieve capture information of great tit parents
   gt_parents <- gt_data %>%
+    dplyr::filter(!is.na(gt_data$year))%>%
     # Create female & male IDs
-    tidyr::unite(femaleID, .data$females_ring_series, .data$females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
-    tidyr::unite(maleID, .data$males_ring_series, .data$males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(femaleID, females_ring_series, females_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
+    tidyr::unite(maleID, males_ring_series, males_ring, remove = FALSE, na.rm = TRUE, sep = "") %>%
     dplyr::mutate(dplyr::across(.cols = c("femaleID", "maleID"),
                                 .fns = ~{
 
@@ -750,6 +757,8 @@ create_capture_MAY <- function(gt_data,
     dplyr::mutate(clutchSize = dplyr::case_when(stringr::str_detect(.data$clutchSize, "\\?") ~ dplyr::na_if(stringr::str_remove(.data$clutchSize, "\\?"), ""),
                                                 stringr::str_detect(.data$clutchSize, "\\(") ~ stringr::str_extract(.data$clutchSize, "(?<=\\()[:digit:]{1,2}(?=\\))"),
                                                 stringr::str_detect(.data$clutchSize, ".*[:alpha:]+.*") ~ NA_character_,
+                                                stringr::str_detect(.data$clutchSize, "\\>") ~ NA_character_,
+                                                stringr::str_detect(.data$clutchSize, "\\+") ~ NA_character_,
                                                 TRUE ~ .data$clutchSize),
                   clutchSize = sapply(.data$clutchSize, function(x) eval(parse(text = x))),
                   captureDate = dplyr::case_when(is.na(.data$layDate) ~ NA_character_,
@@ -1081,18 +1090,34 @@ create_experiment_MAY <- function(brood_data) {
 #' @examples
 #'
 #' retrieve_chickIDs_MAY("856840,1,55-62")
+#' retrieve_chickIDs_MAY("XV 54798-800; XE 63101")
 #'
 
 retrieve_chickIDs_MAY <- function(chickID) {
 
   # Replace spaces between two numbers by comma
   chickID <- stringr::str_replace_all(chickID, pattern = "(?<=[:digit:])[:space:](?=[:digit:])", replacement = ",")
+
+  #replace space between two series that have different letters by a comma
+  chickID <- stringr::str_replace_all(chickID, pattern = "(?<=[:digit:])[:space:](?=[:alpha:])", replacement = ",")
+
+  #Fix potential double dashes e.g. "XJ 98280-86-29" (happened only once so far): remove the extra dash and 2 digits
+  if(!is.na(chickID) & stringr::str_detect(chickID, pattern = "[\\-][:digit:]{2}[\\-][:digit:]{2}")==TRUE){
+    chickID <- stringr::str_extract_all(chickID, pattern = "[:alpha:]{2}[:space:][:digit:]{5}[\\-][:digit:]{2}")
+    #chickID <- stringr::str_replace_all(chickID, pattern = "(?<=[\\-][:digit:]{2})[\\-](?=[:digit:]{2})", replacement = ",")#option 2 is to replace with a comma but then 8 rings which is > than the number of chicks reported
+
+  }
+
+
   # Remove spaces, and brackets
   chickID <- stringr::str_remove_all(chickID, pattern = " ")
   chickID <- stringr::str_remove_all(chickID, pattern = "\\(.*\\)")
+
+  #Remove everything that follows a "+" (as in "+1 without a ring")
+  chickID <- strsplit(chickID,"\\+")[[1]][1]
+
   # Replace semicolons and pluses by commas
   chickID <- stringr::str_replace_all(chickID, pattern = ";", replacement = ",")
-  chickID <- stringr::str_replace_all(chickID, pattern = "\\+", replacement = ",")
 
   # Set chickID to NA if format is not a series, i.e.,
   # - if it does not contain "-" or ","
@@ -1107,9 +1132,10 @@ retrieve_chickIDs_MAY <- function(chickID) {
     # Else, retrieve series of complete chick IDs
   } else {
 
+
     # Extract starting letters, if present
-    id_letters <- stringr::str_extract(chickID, "[:alpha:]{1,2}")
-    id_numbers <- stringr::str_remove(chickID, "[:alpha:]{1,2}")
+    id_letters <- stringr::str_extract_all(chickID, "[:alpha:]{1,2}")
+    id_numbers <- stringr::str_remove_all(chickID, "[:alpha:]{1,2}")
 
     # Split series of chick IDs
     id_series <- stringr::str_split(id_numbers, pattern = "[-,]")[[1]]
@@ -1185,7 +1211,7 @@ retrieve_chickIDs_MAY <- function(chickID) {
 
     # Zip chick ID vector with special character vector
     # Replace "-" by ":"
-    new_string <- paste0("c(", stringr::str_replace_all(stringr::str_flatten(c(new_series, special_chars)[order(c(seq_along(new_series), seq_along(special_chars)))]), pattern = "-", replacement = ":"), ")")
+    new_string <- paste0("c(",stringr::str_replace_all(stringr::str_flatten(c(new_series, special_chars)[order(c(seq_along(new_series), seq_along(special_chars)))]), pattern = "-", replacement = ":"),")")
 
     # Parse text to retrieve sequence of chick IDs
     new_ids <- eval(parse(text = new_string))
@@ -1194,9 +1220,19 @@ retrieve_chickIDs_MAY <- function(chickID) {
     output <- stringr::str_pad(as.character(new_ids), width = nchar(id_series[1]), side = "left", pad = 0)
 
     # Add letters to each ID, if present
-    if(!is.na(id_letters)) {
+    if(!is.na(id_letters) & length(id_letters[[1]])==1) {
 
       output <- paste0(id_letters, output)
+
+    }
+
+    if(!is.na(id_letters) & length(id_letters[[1]])>1) {#if different series use different letters, map the letters back to the numbers using the first 2 digits
+
+      series2digits<-stringr::str_split(id_numbers, pattern = ",")[[1]]
+      series2digits<-sapply(series2digits,function(x) stringr::str_extract_all(x, "[\\d]{2}")[[1]][1])
+      x<-1:length(id_letters[[1]])
+      output<-unlist(sapply(x,function(x) paste0(id_letters[[1]][x],output[which(str_detect(output,series2digits[x]))]) ))
+
 
     }
 
