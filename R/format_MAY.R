@@ -1090,6 +1090,7 @@ create_experiment_MAY <- function(brood_data) {
 #' retrieve_chickIDs_MAY("856840,1,55-62")
 #' retrieve_chickIDs_MAY("XV 54798-800; XE 63101")
 #' retrieve_chickIDs_MAY("177497-0+XB721822-3")
+#' #NOTE: a lot of duplicate ring numbers in pf chicks (385) and 1 in GT. This is probably due to missing ring series letters.
 
 retrieve_chickIDs_MAY <- function(chickID) {
 
