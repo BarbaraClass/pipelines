@@ -812,7 +812,7 @@ create_capture_MAY <- function(gt_data,
                                                                       "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$individualID,
                                       TRUE ~ NA_character_)) %>%
     # Remove unknown individualIDs
-    dplyr::filter(!is.na(.data$individualID)) %>%
+    dplyr::filter(!is.na(individualID)) %>%
     # Treat capture date as the laying date + clutch size + average incubation duration + day chicks were ringed
     # TODO: Check with data custodian
     # Convert dates from May days (1 = 1st of May) to year, month, day
@@ -861,16 +861,16 @@ create_capture_MAY <- function(gt_data,
     dplyr::arrange(.data$individualID, .data$captureYear, .data$captureMonth, .data$captureDay) %>%
     dplyr::group_by(.data$individualID) %>%
     # First captures are assumed to be tagging events, and thus captureTagID = NA.
-    # NB: Only add tag numbers if full tag number (letters + numbers) are recorded
+    # NB: Only add tag numbers if full tag number (letters + numbers) are recorded#Probably not a good idea as you get >50% individuals with no ID for a column that does not allow NAs
     dplyr::mutate(captureTagID = dplyr::case_when(dplyr::row_number() == 1 ~ NA_character_,
-                                                       stringr::str_detect(.data$individualID,"^[:digit:]") ~ NA_character_,
+                                                       #stringr::str_detect(.data$individualID,"^[:digit:]") ~ NA_character_,
                                                        TRUE ~ .data$individualID),
                   # All releases are assumed to be alive (also see releaseAlive), so no NAs in releaseTagID
-                  releaseTagID = dplyr::case_when(stringr::str_detect(.data$individualID,"^[:digit:]") ~ NA_character_,
-                                                       TRUE ~ .data$individualID)) %>%
+                  releaseTagID =.data$individualID) %>%
     dplyr::ungroup() %>%
     # Filter species
     dplyr::filter(speciesID %in% {{species_filter}}) %>%
+
     # Create captureID
     dplyr::group_by(.data$individualID) %>%
     dplyr::mutate(captureID = paste(.data$individualID, 1:dplyr::n(), sep = "_")) %>%
@@ -973,16 +973,17 @@ create_location_MAY <- function(gt_data,
 
   # There are no coordinates or box type information
   locations <- data %>%
-    dplyr::select("studyID", "siteID", "plotID", "locationID") %>%
+    #dplyr::select("studyID", "siteID", "plotID", "locationID") %>%
     tidyr::drop_na() %>%
-    dplyr::distinct() %>%
     dplyr::mutate(locationType = "nest",
                   decimalLatitude = NA_real_,
                   decimalLongitude = NA_real_,
-                  startYear = as.integer(min(data$year)),
+                  startYear = as.integer(min(.data$year)),
                   endYear = NA_integer_,
                   # TODO: habitat is set to NA; check with data custodian
-                  habitatID = NA_character_)
+                  habitatID = NA_character_) %>%
+    dplyr::select(-year)%>%
+    dplyr::distinct()
 
   return(locations)
 
@@ -1002,7 +1003,7 @@ create_measurement_MAY <- function(capture_data) {
 
   # Measurements are only taken of individuals (during captures), not of locations,
   # so we use capture_data as input
-  measurements <- capture_data %>%
+  measurements <- capture_data %>%#
     dplyr::select(recordID = "captureID",
                   "studyID",
                   siteID = "captureSiteID",
@@ -1034,12 +1035,13 @@ create_measurement_MAY <- function(capture_data) {
                   # (e.g., wingLength -> wing length)
                   measurementType = tolower(gsub("([[:upper:]])", " \\1", .data$measurementType)),
                   # Use different date column for measurement date for molt scores
-                  measurementDeterminedYear = dplyr::case_when(.data$measurementType == "molt" ~ as.integer(lubridate::year(.data$moltDate)),
+                  measurementDeterminedYear = dplyr::case_when(.data$measurementType == "molt" & !is.na(.data$moltDate)~ as.integer(lubridate::year(.data$moltDate)),
                                                                TRUE ~ .data$measurementDeterminedYear),
-                  measurementDeterminedMonth = dplyr::case_when(.data$measurementType == "molt" ~ as.integer(lubridate::month(.data$moltDate)),
+                  measurementDeterminedMonth = dplyr::case_when(.data$measurementType == "molt" & !is.na(.data$moltDate)~ as.integer(lubridate::month(.data$moltDate)),
                                                                 TRUE ~ .data$measurementDeterminedMonth),
-                  measurementDeterminedDay = dplyr::case_when(.data$measurementType == "molt" ~ as.integer(lubridate::day(.data$moltDate)),
+                  measurementDeterminedDay = dplyr::case_when(.data$measurementType == "molt"& !is.na(.data$moltDate) ~ as.integer(lubridate::day(.data$moltDate)),
                                                               TRUE ~ .data$measurementDeterminedDay)) %>%
+
     dplyr::arrange(.data$measurementDeterminedYear,
                    .data$measurementDeterminedMonth,
                    .data$measurementDeterminedDay)
@@ -1112,7 +1114,7 @@ retrieve_chickIDs_MAY <- function(chickID) {
 
   #Remove everything that follows a "+" if followed by "without"or Cyrillic characters, otherwise replace + by a comma
   chickID.tmp <- strsplit(chickID,"\\+")[[1]]
-  if(!is.na(chickID) & sum(str_detect(chickID.tmp,pattern="without")) + sum(str_detect(chickID.tmp,pattern="[\\p{Cyrillic}]"))>0) {
+  if(!is.na(chickID) & sum(stringr::str_detect(chickID.tmp,pattern="without")) + sum(stringr::str_detect(chickID.tmp,pattern="[\\p{Cyrillic}]"))>0) {
     chickID <- strsplit(chickID,"\\+")[[1]][1]
   }
 
@@ -1240,7 +1242,7 @@ retrieve_chickIDs_MAY <- function(chickID) {
       series2digits<-stringr::str_split(id_numbers, pattern = ",")[[1]]
       series2digits<-sapply(series2digits,function(x) stringr::str_extract_all(x, "[\\d]{2}")[[1]][1])
       x<-1:length(id_letters[[1]])
-      output<-unlist(sapply(x,function(x) paste0(id_letters[[1]][x],output[which(str_detect(output,series2digits[x]))]) ))
+      output<-unlist(sapply(x,function(x) paste0(id_letters[[1]][x],output[which(stringr::str_detect(output,series2digits[x]))]) ))
 
 
     }
