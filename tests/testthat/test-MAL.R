@@ -266,17 +266,17 @@ test_that("Column classes are as expected", {
 
 
 test_that("ID columns match the expected format for the pipeline", {
-   ## FemaleID format is as expected
-   test_ID_format(pipeline_output, ID_col = "FemaleID", ID_format = "([:alnum:]){7,8}")
+  ## FemaleID format is as expected
+  test_ID_format(pipeline_output, ID_col = "FemaleID", ID_format = "([:alnum:]){7,8}")
 
-   ## MaleID format is as expected
-   #test_ID_format(pipeline_output, ID_col = "MaleID", ID_format = "([:alnum:]){7,8}")
+  ## MaleID format is as expected
+  #test_ID_format(pipeline_output, ID_col = "MaleID", ID_format = "([:alnum:]){7,8}")
 
-   ## IndvID format in Capture data  is as expected
-   #test_ID_format(pipeline_output, ID_col = "C-IndvID", ID_format = "([:alnum:]){7,8}")
+  ## IndvID format in Capture data  is as expected
+  #test_ID_format(pipeline_output, ID_col = "C-IndvID", ID_format = "([:alnum:]){7,8}")
 
-   ## IndvID format in Individual data is as expected
-   #test_ID_format(pipeline_output, ID_col = "I-IndvID", ID_format = "([:alnum:]){7,8}")
+  ## IndvID format in Individual data is as expected
+  #test_ID_format(pipeline_output, ID_col = "I-IndvID", ID_format = "([:alnum:]){7,8}")
 
 })
 

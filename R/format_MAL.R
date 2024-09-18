@@ -128,8 +128,8 @@ format_MAL <- function(db = choose_directory(),
                      HatchDate_observed = lubridate::ymd(.data$HatchDate),
                      ClutchSize_observed = suppressWarnings(as.integer(.data$ClutchSize)),
                      BroodSize_observed = as.integer(case_when(suppressWarnings(as.integer(.data$NumberHatched))<0 ~ 0,
-                                                    TRUE~suppressWarnings(as.integer(.data$NumberHatched))),
-                     FledgeSize_observed = suppressWarnings(as.integer(.data$NumberAtD14))),
+                                                               TRUE~suppressWarnings(as.integer(.data$NumberHatched))),
+                                                     FledgeSize_observed = suppressWarnings(as.integer(.data$NumberAtD14))),
                      ## Year is not entered in some cases, retrieve it from other date columns when possible
                      BreedingSeason = dplyr::case_when(is.na(.data$Year) ~ as.integer(lubridate::year(.data$LayDate_observed)),
                                                        TRUE ~ as.integer(.data$Year)))
@@ -154,7 +154,7 @@ format_MAL <- function(db = choose_directory(),
                                                                    origin = as.Date(paste0(.data$BreedingSeason, "-03-31")))),
                      ClutchSize_observed = suppressWarnings(as.integer(.data$ClutchSize)),
                      BroodSize_observed = as.integer(case_when(suppressWarnings(as.integer(.data$NumberHatched))<0 ~ 0,
-                                                    TRUE~suppressWarnings(as.integer(.data$NumberHatched)))),
+                                                               TRUE~suppressWarnings(as.integer(.data$NumberHatched)))),
                      FledgeSize_observed = suppressWarnings(as.integer(.data$NumberAtD14D15)))
 
   ## Combine two primary data formats and process further
@@ -416,6 +416,12 @@ create_capture_MAL <- function(rr_data) {
              Date = .data$CaptureDate,
              Year = .data$BreedingSeason) %>%
 
+    ## Remove any NAs from essential columns
+    dplyr::filter(!is.na(.data$IndvID),
+                  !is.na(.data$CapturePopID),
+                  !is.na(.data$BreedingSeason),
+                  !is.na(.data$Species)) %>%
+
     ## Arrange
     dplyr::arrange(.data$BreedingSeason, .data$CapturePopID, .data$IndvID, .data$CaptureDate) %>%
 
@@ -521,6 +527,12 @@ create_individual_MAL <- function(Capture_data, Brood_data){
     dplyr::bind_cols(individual_data_template[0,!(names(individual_data_template) %in% names(.))]  %>%
                        dplyr::add_row()) %>%
 
+    ## Remove any NAs from essential columns
+    dplyr::filter(!is.na(.data$IndvID),
+                  !is.na(.data$PopID),
+                  !is.na(.data$RingSeason),
+                  !is.na(.data$Species)) %>%
+
     ## Reorder columns
     dplyr::select(names(individual_data_template))
 
@@ -555,7 +567,7 @@ create_location_MAL <- function(loc_data) {
                   NestboxID = .data$LocationID,
                   StartSeason = as.integer(min(.data$Year[.data$Present == "Y"], na.rm = TRUE)),
                   EndSeason = as.integer(dplyr::case_when(any(removed == "Y") ~ max(.data$Year),
-                                               TRUE ~ NA_integer_)),
+                                                          TRUE ~ NA_integer_)),
                   LocationType = "NB") %>%
 
     dplyr::distinct(.data$LocationID, .keep_all = T) %>%
