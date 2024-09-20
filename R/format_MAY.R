@@ -6,26 +6,19 @@
 #' This section provides details on data management choices that are unique to
 #' these data. For a general description of the standard format please see
 #' \href{https://github.com/SPI-Birds/documentation/blob/master/standard_protocol/SPI_Birds_Protocol_v2.0.0.pdf}{here}.
+#
+#' \strong{Lay dates & hatch dates}: Some lay dates and hatch dates contain special characters (e.g., "<", "?"), which mean they are unknwon. Dates between brackets are probable dates and brackets are ignored. Some lay dates and hatch dates in primary data are a range of values (e.g., "31-34"). These are converted into the minimum (minimumLayDate, minimumHatchDate) and maximum dates (maximumLayDate, maximumHatchDate); observed dates (observedLayDate, observedHatchDate) are given by the average of the range (rounded down; i.e. "32" in the example).
 #'
-#' \strong{plotID}: The "line of nest boxes" are interpreted as distinctive plots. Check with data custodian.
+#' \strong{Clutch size, brood size, fledgling number}: Some clutch sizes, brood sizes, and fledgling numbers contain special characters (e.g., ?", "()"), which means incomplete clutches or size unknown. These are interpreted as NA. Some clutch sizes, brood sizes, and fledgling numbers are written as an arithmetic expression (e.g., "7+4"), and result from brood manipulation experiments (enlarged or reduced clutches in 1984-1987) or double clutches.Keep the final brood size.
 #'
-#' \strong{speciesID}: No species identification in primary data. Check with data custodian.
-#'
-#' \strong{Lay dates & hatch dates}: Some lay dates and hatch dates contain special characters (e.g., "<", "?", "()"), which are ignored. Some lay dates and hatch dates in primary data are a range of values (e.g., "31-34"). These are converted into the minimum (minimumLayDate, minimumHatchDate) and maximum dates (maximumLayDate, maximumHatchDate); observed dates (observedLayDate, observedHatchDate) are given by the average of the range (rounded down; i.e. "32" in the example). Check with data custodian.
-#'
-#' \strong{Clutch size, brood size, fledgling number}: Some clutch sizes, brood sizes, and fledgling numbers contain special characters (e.g., ?", "()"), which are ignored. Some clutch sizes, brood sizes, and fledgling numbers are written as an arithmetic expression (e.g., "7+4"), and interpreted as such (i.e., the observed value equals 11 in the example).
-#'
-#' \strong{Capture dates}: No exact information on capture dates are given. For adults, we use the start of incubation as a proxy of capture date (i.e., lay date + clutch size). Chick capture dates need to be checked with data custodian.
-#'
-#' \strong{captureAlive, releaseAlive}: All individuals are assumed to be captured and released alive.
-#'
+#' \strong{Capture dates}: No exact information on capture dates are given. These are therefore put as NA rather than inferring inaccurate dates (to avoid confusing data users).
+#'#'
 #' \strong{captureTagID, releaseTagID}: First captures of all individuals are assumed to be tagging events, and thus captureTagID is set to NA.
 #'
 #' Only when individual IDs start with two letters, followed by 5 or 6 digits, the ID is considered a ring number and stored in captureTagID and/or releaseTagID. When, for example, the letters are missing, the ring number is considered incomplete and captureTagID and releaseTagID are set to NA.
+#' The problem is that releaseTagID does not allow for NAs..
 #'
-#' \strong{startYear}: Assume all boxes were placed in the first year of the study.
-#'
-#' \strong{habitatID}: Check habitat type with data custodian.
+#'#' \strong{TreatmentID}: Refers to brood size manipulation experiments carried out between 1984 and 1987 in which the numbers of eggs or nestlings were enlarged/reduced in some broods
 #'
 #' @inheritParams pipeline_params
 #'
@@ -70,15 +63,12 @@ format_MAY <- function(db = choose_directory(),
                                               studyID = "MAY-1",
                                               siteID = "MAY",
                                               # Ensure unique plotIDs; add siteID prefix
-                                              # TODO: Are the line of nest boxes indeed plot identifiers? Check with data custodian
                                               plotID = paste0("MAY_", toupper(.data$the_line_of_nest_boxes)),
                                               # Ensure unique locationIDs; requires plot & nestbox
                                               locationID = paste(.data$the_line_of_nest_boxes, .data$no_nest_box, sep = "_"),
                                               # Ensure unique broodIDs; plot, nestbox ID, and "no string"
-                                              # TODO: Check with data custodian whether "no string" is consistent
                                               broodID = paste(.data$year, .data$the_line_of_nest_boxes,
                                                               .data$no_nest_box, .data$no_string_1, sep = "_"),
-                                              # TODO: No species identification, so all individuals assumed to be pied flycatcher; check with data custodian
                                               speciesID = species_codes$speciesID[species_codes$speciesCode == "10003"]) %>%
                                 # Convert dates
                                 dplyr::mutate(dplyr::across(.cols = c("date_of_female_molt_survey",
@@ -101,15 +91,12 @@ format_MAY <- function(db = choose_directory(),
                                               studyID = "MAY-1",
                                               siteID = "MAY",
                                               # Ensure unique plotIDs; add siteID prefix
-                                              # TODO: Are the line of nest boxes indeed plot identifiers? Check with data custodian
                                               plotID = paste0("MAY_", toupper(.data$the_line_of_nest_boxes)),
                                               # Ensure unique locationIDs; requires plot & nestbox
                                               locationID = paste(.data$the_line_of_nest_boxes, .data$no_nest_box, sep = "_"),
                                               # Ensure unique broodIDs; plot, nestbox ID, and "no string"
-                                              # TODO: Check with data custodian whether "no string" is consistent
                                               broodID = paste(.data$year, .data$the_line_of_nest_boxes,
                                                               .data$no_nest_box, .data$no_string_1, sep = "_"),
-                                              # TODO: No species identification, so all individuals assumed to be great tit; check with data custodian
                                               speciesID = species_codes$speciesID[species_codes$speciesCode == "10001"])
   )
 
@@ -310,24 +297,23 @@ create_brood_MAY <- function(gt_data,
 
                                   }),
                     # If femaleID & maleID differ from expected format, set to NA
-                    # TODO: Check IDs with data custodian: many missing "ring series" letters (e.g., XA, VS)
                     femaleID = dplyr::case_when(stringr::str_detect(.data$femaleID, "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$femaleID,
                                                 TRUE ~ NA_character_),
                     maleID = dplyr::case_when(stringr::str_detect(.data$maleID, "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$maleID,
                                               TRUE ~ NA_character_)) %>%
       # Convert dates from May days (1 = 1st of May) to year, month, day
-      # Days formatted as e.g., "<32", ">32", "32?", "(32)" or "?" are interpreted without the special characters
+      # Days formatted as e.g., "<32", ">32", "32?", or "?"are interpreted as NA
+      #"(32)"  are interpreted without the special characters
       # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-      # TODO: check with data custodian
       dplyr::mutate(dplyr::across(.cols = c("start_date_of_laying_1_may_1", "hatching_date_1_may_1"),
                                   .fns = ~{
 
                                     dplyr::case_when(
                                       is.na(.x) ~ NA_character_,
-                                      stringr::str_detect(.x, "<") ~ stringr::str_remove(.x, "<"),
-                                      stringr::str_detect(.x, ">") ~ stringr::str_remove(.x, ">"),
+                                      stringr::str_detect(.x, "<") ~ NA_character_,
+                                      stringr::str_detect(.x, ">") ~ NA_character_,
                                       stringr::str_detect(.x, "^\\?") ~ NA_character_,
-                                      stringr::str_detect(.x, ".*\\?") ~ stringr::str_remove(.x, "\\?"),
+                                      stringr::str_detect(.x, ".*\\?") ~ NA_character_,
                                       stringr::str_detect(.x, "\\(") ~ stringr::str_extract(.x, "(?<=\\()[:digit:]{1,2}(?=\\))"),
                                       stringr::str_detect(.x, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.x, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.x, "(?<=-)[:digit:]{1,2}"))) / 2)),
                                       TRUE ~ .x
@@ -381,10 +367,20 @@ create_brood_MAY <- function(gt_data,
                     maximumHatchYear = as.integer(lubridate::year(.data$hatching_date_1_may_1_maximumMayDate)),
                     maximumHatchMonth = as.integer(lubridate::month(.data$hatching_date_1_may_1_maximumMayDate)),
                     maximumHatchDay = as.integer(lubridate::day(.data$hatching_date_1_may_1_maximumMayDate))) %>%
+
+      # Identify experiments: in 1984-1987 brood size manipulation at different stages
+      dplyr::mutate(treatmentID=dplyr::case_when(.data$year %in% c(1984:1987) & stringr::str_detect(.data$clutch_size,"\\+")~ "clutchsize_enlarged",
+                                                 .data$year %in% c(1984:1987) & stringr::str_detect(.data$clutch_size,"\\-")~ "clutchsize_reduced",
+                                                 .data$year %in% c(1984:1987) & stringr::str_detect(.data$number_of_hatched_nestlings,"\\+")~ "broodsize_enlarged",
+                                                 .data$year %in% c(1984:1987) & stringr::str_detect(.data$number_of_hatched_nestlings,"\\-")~ "broodsize_reduced",
+                                                 .data$year %in% c(1984:1987) & stringr::str_detect(.data$the_cause_of_the_nests_death,"experiment") &
+                                                   stringr::str_detect(.data$clutch_size,"\\+")==FALSE & stringr::str_detect(.data$clutch_size,"\\-")==FALSE &
+                                                   stringr::str_detect(.data$number_of_hatched_nestlings,"\\+")==FALSE & stringr::str_detect(.data$number_of_hatched_nestlings,"\\-")==FALSE &
+                                                   .data$number_of_fledlings==0 ~ "simulated_nest_death",
+                                                 TRUE~NA_character_))%>%
       # Convert numbers (clutch size, brood size, fledgling number)
       # Values formatted as e.g. "7+4" or "7-4" are interpreted as arithmetic calculations, yielding values of 11 and 3, respectively
-      # Values formatted as e.g. "(4)" or "5?" are interpreted without the special characters
-      # TODO: Check with data custodian
+      # Values formatted as e.g. "(4)" or "5?" are interpreted as NA
       dplyr::mutate(dplyr::across(.cols = c("clutch_size", "number_of_hatched_nestlings", "number_of_fledlings"),
                                   .fns = ~{
 
@@ -395,8 +391,8 @@ create_brood_MAY <- function(gt_data,
                                   .fns = ~ {
 
                                     dplyr::case_when(
-                                      stringr::str_detect(.x, "\\?") ~ dplyr::na_if(stringr::str_remove(.x, "\\?"), ""),
-                                      stringr::str_detect(.x, "\\(") ~ stringr::str_extract(.x, "(?<=\\()[:digit:]{1,2}(?=\\))"),
+                                      stringr::str_detect(.x, "\\?") ~ NA_character_,
+                                      stringr::str_detect(.x, "\\(") ~ NA_character_,
                                       stringr::str_detect(.x, ".*[:alpha:]+.*") ~ NA_character_,
                                       TRUE ~ .x
                                     )
@@ -410,15 +406,12 @@ create_brood_MAY <- function(gt_data,
                                   }),
                     observedClutchSize = as.integer(.data$clutch_size),
                     observedBroodSize = as.integer(.data$number_of_hatched_nestlings),
-                    observedNumberFledged = as.integer(.data$number_of_fledlings)) %>%
-      # Identify experiments
-      # TODO: Some nests are marked as "experiment". Check with data custodian
-      dplyr::group_by(.data$year) %>%
-      # Create index for every experimental brood per year, starting at 1 each year, and ignoring other "causes of death" and NAs
-      dplyr::mutate(expBroodIndex = cumsum(dplyr::coalesce(.data$the_cause_of_the_nests_death == "experiment", 0)) + as.integer(.data$the_cause_of_the_nests_death == "experiment") * 0,
-                    # Concatenate year and index to create unique treatment ID
-                    treatmentID = dplyr::case_when(.data$the_cause_of_the_nests_death == "experiment" ~ paste(.data$year, .data$expBroodIndex, sep = "_"),
-                                                   TRUE ~ NA_character_)) %>%
+                    observedNumberFledged = as.integer(.data$number_of_fledlings),
+                    observedClutchType= dplyr::case_when(stringr::str_detect(.data$status_and_re_nesting, "first")~ "first",
+                                                         stringr::str_detect(.data$status_and_re_nesting, "repeat")~ "replacement",
+                                                         stringr::str_detect(.data$status_and_re_nesting, "second")~ "second",
+                                                         stringr::str_detect(.data$status_and_re_nesting, "third")~ "second",
+                                                         TRUE~NA_character_))%>%
       dplyr::ungroup()
 
   # Great tit data
@@ -438,18 +431,18 @@ create_brood_MAY <- function(gt_data,
                   maleID = dplyr::case_when(stringr::str_detect(.data$maleID, "^[:upper:]{2}[:digit:]{5,6}$") ~ .data$maleID,
                                             TRUE ~ NA_character_)) %>%
     # Convert dates from May days (1 = 1st of May) to year, month, day
-    # Days formatted as e.g., "<32", "(32)" or "?" are interpreted without the special characters
+    # Days formatted as e.g., "<32", ">32", "32?", or "?"are interpreted as NA
+    #"(32)"  are interpreted without the special characters
     # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-    # TODO: check with data custodian
     dplyr::mutate(dplyr::across(.cols = c("start_date_of_laying_1_may_1", "hatching_date_1_may_1"),
                                 .fns = ~{
 
                                   dplyr::case_when(
                                     is.na(.x) ~ NA_character_,
-                                    stringr::str_detect(.x, "<") ~ stringr::str_remove(.x, "<"),
-                                    stringr::str_detect(.x, "<-") ~ stringr::str_remove(.x, "<-"),
+                                    stringr::str_detect(.x, "<") ~ NA_character_,
+                                    stringr::str_detect(.x, "<-") ~ NA_character_,
                                     stringr::str_detect(.x, "^\\?") ~ NA_character_,
-                                    stringr::str_detect(.x, ".*\\?") ~ stringr::str_remove(.x, "\\?"),
+                                    stringr::str_detect(.x, ".*\\?") ~ NA_character_,
                                     stringr::str_detect(.x, "\\(") ~ stringr::str_extract(.x, "(?<=\\()[:digit:]{1,2}(?=\\))"),
                                     stringr::str_detect(.x, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.x, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.x, "(?<=-)[:digit:]{1,2}"))) / 2)),
                                     TRUE ~ .x
@@ -504,19 +497,17 @@ create_brood_MAY <- function(gt_data,
                   maximumHatchMonth = as.integer(lubridate::month(.data$hatching_date_1_may_1_maximumMayDate)),
                   maximumHatchDay = as.integer(lubridate::day(.data$hatching_date_1_may_1_maximumMayDate))) %>%
     # Convert numbers (clutch size, brood size, fledgling number)
-    # Values formatted as e.g. "7+4" are interpreted as arithmetic calculations (i.e., value is 11)
-    # Values formatted as e.g. "(4)" or "5?" are interpreted without the special characters
-    # Values formatted as e.g. ">6" or are interpreted without the special characters (?). Or put it in minimum columns?
-    # TODO: Check with data custodian
+    # Values formatted as e.g. "7+4" or "7-4" are interpreted as arithmetic calculations, yielding values of 11 and 3, respectively
+    # Values formatted as e.g. "(4)" or "5?" are interpreted as NA
     dplyr::mutate(dplyr::across(.cols = c("clutch_size_in_brackets_possibly_number_of_eggs",
                                           "number_of_hatched_nestlings_in_brackets_possibly_number_of_nestlings",
                                           "number_of_fledlings"),
                                 .fns = ~{
 
                                   dplyr::case_when(
-                                    stringr::str_detect(.x, "\\?") ~ dplyr::na_if(stringr::str_remove(.x, "\\?"), ""),
-                                    stringr::str_detect(.x, "\\>") ~ dplyr::na_if(stringr::str_remove(.x, "\\>"), ""),
-                                    stringr::str_detect(.x, "\\(") ~ stringr::str_extract(.x, "(?<=\\()[:digit:]{1,2}(?=\\))"),
+                                    stringr::str_detect(.x, "\\?") ~ NA_character_,
+                                    stringr::str_detect(.x, "\\>") ~ NA_character_,
+                                    stringr::str_detect(.x, "\\(") ~ NA_character_,
                                     stringr::str_detect(.x, ".*[:alpha:]+.*") ~ NA_character_,
                                     TRUE ~ .x
                                   )
@@ -534,8 +525,6 @@ create_brood_MAY <- function(gt_data,
                   observedBroodSize = as.integer(.data$number_of_hatched_nestlings_in_brackets_possibly_number_of_nestlings),
                   observedNumberFledged = as.integer(.data$number_of_fledlings)) %>%
     # Convert clutch type
-    # Data custodian writes: 1 - normal first; 2 - normal second; 1 or 2 repeat, after losing 1 or 2 brood; (1 or 2) in brackets possibly first, second, or  repeat brood
-    # TODO: Check interpretation with data custodian
     dplyr::rename(clutchType = "no_of_brood_1_normal_first_2_normal_second_1_or_2_repeat_after_losing_1_or_2_brood_1_or_2_in_brackets_possibly_first_second_or_repeat_brood") %>%
     dplyr::mutate(observedClutchType = dplyr::case_when(.data$clutchType %in% c("1", "(1)") ~ "first",
                                                         stringr::str_detect(.data$clutchType, "1.*repeat") ~ "replacement",
@@ -611,32 +600,11 @@ create_capture_MAY <- function(gt_data,
                   femaleID = dplyr::case_when(stringr::str_detect(.data$femaleID, "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$femaleID,
                                               TRUE ~ NA_character_),
                   maleID = dplyr::case_when(stringr::str_detect(.data$maleID, "^[:upper:]{0,2}[:digit:]{5,6}$") ~ .data$maleID,
-                                            TRUE ~ NA_character_)) %>%
-    # Treat capture date as the start of incubation (i.e., laying date + clutch size)# It should be when chicks are 7-14 days old (see Artemyev 2008)
-    # TODO: Check with data custodian, and what to do with cases where laying date is NA
-    # Convert dates from May days (1 = 1st of May) to year, month, day
-    # Days formatted as e.g., "<32", ">32", "32?", "(32)" or "?" are interpreted without the special characters
-    # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-    dplyr::rename(layDate = "start_date_of_laying_1_may_1") %>%
-    dplyr::mutate(clutchSize = stringr::str_replace_all(.data$clutch_size, pattern = " ", replacement = ""),
-                  clutchSize = dplyr::case_when(stringr::str_detect(.data$clutchSize, "\\?") ~ dplyr::na_if(stringr::str_remove(.data$clutchSize, "\\?"), ""),
-                                                stringr::str_detect(.data$clutchSize, "\\(") ~ stringr::str_extract(.data$clutchSize, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                stringr::str_detect(.data$clutchSize, ".*[:alpha:]+.*") ~ NA_character_,
-                                                TRUE ~ .data$clutchSize),
-                  clutchSize = sapply(.data$clutchSize, function(x) eval(parse(text = x))),
-                  captureDate = dplyr::case_when(is.na(.data$layDate) ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, "<") ~ stringr::str_remove(.data$layDate, "<"),
-                                                 stringr::str_detect(.data$layDate, ">") ~ stringr::str_remove(.data$layDate, ">"),
-                                                 stringr::str_detect(.data$layDate, "^\\?") ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, ".*\\?") ~ stringr::str_remove(.data$layDate, "\\?"),
-                                                 stringr::str_detect(.data$layDate, "\\(") ~ stringr::str_extract(.data$layDate, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                 stringr::str_detect(.data$layDate, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.data$layDate, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.data$layDate, "(?<=-)[:digit:]{1,2}"))) / 2)),
-                                                 TRUE ~ .data$layDate),
-                  captureDate = lubridate::as_date(x = paste0(.data$year, "-04-30")) + as.integer(.data$captureDate) + as.integer(.data$clutchSize),
-                  captureYear = dplyr::case_when(is.na(.data$captureDate) ~ as.integer(.data$year),
-                                                 TRUE ~ as.integer(lubridate::year(.data$captureDate))),
-                  captureMonth = as.integer(lubridate::month(.data$captureDate)),
-                  captureDay = as.integer(lubridate::day(.data$captureDate))) %>%
+                                            TRUE ~ NA_character_),
+                  captureDate = NA_character_,
+                  captureYear = as.integer(.data$year),
+                  captureMonth = NA_integer_,
+                  captureDay = NA_integer_) %>%
     # Pivot information on females and males into rows
     tidyr::pivot_longer(cols = c("femaleID", "maleID"),
                         names_to = "sex",
@@ -645,8 +613,7 @@ create_capture_MAY <- function(gt_data,
     dplyr::filter(!is.na(.data$individualID)) %>%
     dplyr::mutate(observedSex = dplyr::case_when(grepl(pattern = "^f", x = .data$sex) ~ "F",
                                                  grepl(pattern = "^m", x = .data$sex) ~ "M"),
-                  # TODO: Check with data custodian how to interpret ages (units?)
-                  age = dplyr::case_when(.data$observedSex == "F" ~ .data$females_age,
+                  age = dplyr::case_when(.data$observedSex == "F" ~ .data$females_age,#Age was directly provided in calendar years based on plumage at first capture or year of hatching.
                                          .data$observedSex == "M" ~ .data$males_age),
                   age = dplyr::case_when(.data$age == "registered earlier" ~ NA_character_,
                                          TRUE ~ .data$age),
@@ -697,34 +664,11 @@ create_capture_MAY <- function(gt_data,
                                                   TRUE ~ NA_character_)) %>%
     # Remove unknown individualIDs
     dplyr::filter(!is.na(.data$individualID)) %>%
-    # Treat capture date as the laying date + clutch size + average incubation duration + day chicks were ringed
-    # TODO: Check with data custodian
-    # Convert dates from May days (1 = 1st of May) to year, month, day
-    # Days formatted as e.g., "<32", ">32", "32?", "(32)" or "?" are interpreted without the special characters
-    # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-    dplyr::rename(layDate = "start_date_of_laying_1_may_1") %>%
-    dplyr::mutate(clutchSize = stringr::str_replace_all(.data$clutch_size, pattern = " ", replacement = ""),
-                  clutchSize = dplyr::case_when(stringr::str_detect(.data$clutchSize, "\\?") ~ dplyr::na_if(stringr::str_remove(.data$clutchSize, "\\?"), ""),
-                                                stringr::str_detect(.data$clutchSize, "\\(") ~ stringr::str_extract(.data$clutchSize, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                stringr::str_detect(.data$clutchSize, ".*[:alpha:]+.*") ~ NA_character_,
-                                                TRUE ~ .data$clutchSize),
-                  clutchSize = sapply(.data$clutchSize, function(x) eval(parse(text = x))),
-                  captureDate = dplyr::case_when(is.na(.data$layDate) ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, "<") ~ stringr::str_remove(.data$layDate, "<"),
-                                                 stringr::str_detect(.data$layDate, ">") ~ stringr::str_remove(.data$layDate, ">"),
-                                                 stringr::str_detect(.data$layDate, "^\\?") ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, ".*\\?") ~ stringr::str_remove(.data$layDate, "\\?"),
-                                                 stringr::str_detect(.data$layDate, "\\(") ~ stringr::str_extract(.data$layDate, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                 stringr::str_detect(.data$layDate, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.data$layDate, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.data$layDate, "(?<=-)[:digit:]{1,2}"))) / 2)),
-                                                 TRUE ~ .data$layDate),
-                  # TODO: Check with data custodian for average incubation length & day at which chicks are typically ringed
-                  captureDate = lubridate::as_date(x = paste0(.data$year, "-04-30")) + as.integer(.data$captureDate) + as.integer(.data$clutchSize),
-                  captureYear = dplyr::case_when(is.na(.data$captureDate) ~ as.integer(.data$year),
-                                                 TRUE ~ as.integer(lubridate::year(.data$captureDate))),
-                  captureMonth = as.integer(lubridate::month(.data$captureDate)),
-                  captureDay = as.integer(lubridate::day(.data$captureDate)),
+    dplyr::mutate(captureDate = NA_character_,
+                  captureYear = as.integer(.data$year),
+                  captureMonth = NA_integer_,
+                  captureDay = NA_integer_,
                   observedSex = NA_character_,
-                  # TODO: Check chick age with data custodian
                   chickAge = NA_integer_,
                   age = "chick")
 
@@ -744,34 +688,11 @@ create_capture_MAY <- function(gt_data,
                   femaleID = dplyr::case_when(stringr::str_detect(.data$femaleID, "^[:upper:]{2}[:digit:]{5,6}$") ~ .data$femaleID,
                                               TRUE ~ NA_character_),
                   maleID = dplyr::case_when(stringr::str_detect(.data$maleID, "^[:upper:]{2}[:digit:]{5,6}$") ~ .data$maleID,
-                                            TRUE ~ NA_character_)) %>%
-    # Treat capture date as the start of incubation (i.e., laying date + clutch size)
-    # TODO: Check with data custodian, and what to do with cases where laying date is NA
-    # Convert dates from May days (1 = 1st of May) to year, month, day
-    # Days formatted as e.g., "<32", "(32)" or "?" are interpreted without the special characters
-    # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-    dplyr::rename(layDate = "start_date_of_laying_1_may_1",
-                  clutchSize = "clutch_size_in_brackets_possibly_number_of_eggs") %>%
-    dplyr::mutate(clutchSize = dplyr::case_when(stringr::str_detect(.data$clutchSize, "\\?") ~ dplyr::na_if(stringr::str_remove(.data$clutchSize, "\\?"), ""),
-                                                stringr::str_detect(.data$clutchSize, "\\(") ~ stringr::str_extract(.data$clutchSize, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                stringr::str_detect(.data$clutchSize, ".*[:alpha:]+.*") ~ NA_character_,
-                                                stringr::str_detect(.data$clutchSize, "\\>") ~ NA_character_,
-                                                stringr::str_detect(.data$clutchSize, "\\+") ~ NA_character_,
-                                                TRUE ~ .data$clutchSize),
-                  clutchSize = sapply(.data$clutchSize, function(x) eval(parse(text = x))),
-                  captureDate = dplyr::case_when(is.na(.data$layDate) ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, "<") ~ stringr::str_remove(.data$layDate, "<"),
-                                                 stringr::str_detect(.data$layDate, "<-") ~ stringr::str_remove(.data$layDate, "<-"),
-                                                 stringr::str_detect(.data$layDate, "^\\?") ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, ".*\\?") ~ stringr::str_remove(.data$layDate, "\\?"),
-                                                 stringr::str_detect(.data$layDate, "\\(") ~ stringr::str_extract(.data$layDate, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                 stringr::str_detect(.data$layDate, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.data$layDate, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.data$layDate, "(?<=-)[:digit:]{1,2}"))) / 2)),
-                                                 TRUE ~ .data$layDate),
-                  captureDate = lubridate::as_date(x = paste0(.data$year, "-04-30")) + as.integer(.data$captureDate) + as.integer(.data$clutchSize),
-                  captureYear = dplyr::case_when(is.na(.data$captureDate) ~ as.integer(.data$year),
-                                                 TRUE ~ as.integer(lubridate::year(.data$captureDate))),
-                  captureMonth = as.integer(lubridate::month(.data$captureDate)),
-                  captureDay = as.integer(lubridate::day(.data$captureDate))) %>%
+                                            TRUE ~ NA_character_),
+                  captureDate = NA_character_,
+                  captureYear = as.integer(.data$year),
+                  captureMonth = NA_integer_,
+                  captureDay = NA_integer_) %>%
     # Pivot information on females and males into rows
     tidyr::pivot_longer(cols = c("femaleID", "maleID"),
                         names_to = "sex",
@@ -783,12 +704,10 @@ create_capture_MAY <- function(gt_data,
                   maleAge = "males_age_1_one_year_old_bird_hatched_last_breeding_season_2_two_or_more_years_old_an_adult_hatched_before_the_last_calendar_year_3_or_4_age_3_4_or_more_years") %>%
     dplyr::mutate(observedSex = dplyr::case_when(grepl(pattern = "f", x = .data$sex) ~ "F",
                                                  grepl(pattern = "m", x = .data$sex) ~ "M"),
-                  # TODO: Check with data custodian how to interpret ages (units?)
-                  age = dplyr::case_when(.data$observedSex == "F" ~ .data$femaleAge,
+                  age = dplyr::case_when(.data$observedSex == "F" ~ .data$femaleAge,  #Age was directly provided in calendar years based on plumage at first capture or year of hatching.
                                          .data$observedSex == "M" ~ .data$maleAge),
                   age = dplyr::case_when(.data$age == "registered earlier this season" ~ NA_character_,
                                          TRUE ~ .data$age),
-                  # No individual measurements were taken
                   chickAge = NA_integer_)
 
   # 4. Retrieve capture information of great tit chicks
@@ -813,47 +732,22 @@ create_capture_MAY <- function(gt_data,
                                       TRUE ~ NA_character_)) %>%
     # Remove unknown individualIDs
     dplyr::filter(!is.na(individualID)) %>%
-    # Treat capture date as the laying date + clutch size + average incubation duration + day chicks were ringed
-    # TODO: Check with data custodian
-    # Convert dates from May days (1 = 1st of May) to year, month, day
-    # Days formatted as e.g., "<32", "(32)" or "?" are interpreted without the special characters
-    # Days formatted as e.g., "32-35" are interpreted as a minimum and maximum; observed dates are taken as the rounded down average
-    dplyr::rename(layDate = "start_date_of_laying_1_may_1",
-                  clutchSize = "clutch_size_in_brackets_possibly_number_of_eggs") %>%
-    dplyr::mutate(clutchSize = dplyr::case_when(stringr::str_detect(.data$clutchSize, "\\?") ~ dplyr::na_if(stringr::str_remove(.data$clutchSize, "\\?"), ""),
-                                                stringr::str_detect(.data$clutchSize, "\\(") ~ stringr::str_extract(.data$clutchSize, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                stringr::str_detect(.data$clutchSize, ".*[:alpha:]+.*") ~ NA_character_,
-                                                TRUE ~ .data$clutchSize),
-                  clutchSize = sapply(.data$clutchSize, function(x) eval(parse(text = x))),
-                  captureDate = dplyr::case_when(is.na(.data$layDate) ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, "<") ~ stringr::str_remove(.data$layDate, "<"),
-                                                 stringr::str_detect(.data$layDate, "<-") ~ stringr::str_remove(.data$layDate, "<-"),
-                                                 stringr::str_detect(.data$layDate, "^\\?") ~ NA_character_,
-                                                 stringr::str_detect(.data$layDate, ".*\\?") ~ stringr::str_remove(.data$layDate, "\\?"),
-                                                 stringr::str_detect(.data$layDate, "\\(") ~ stringr::str_extract(.data$layDate, "(?<=\\()[:digit:]{1,2}(?=\\))"),
-                                                 stringr::str_detect(.data$layDate, ".-") ~ as.character(floor((as.integer(stringr::str_extract(.data$layDate, "[:digit:]{1,2}(?=-)")) + as.integer(stringr::str_extract(.data$layDate, "(?<=-)[:digit:]{1,2}"))) / 2)),
-                                                 TRUE ~ .data$layDate),
-                  # TODO: Check with data custodian for average incubation length & day at which chicks are typically ringed
-                  captureDate = lubridate::as_date(x = paste0(.data$year, "-04-30")) + as.integer(.data$captureDate) + as.integer(.data$clutchSize),
-                  captureYear = dplyr::case_when(is.na(.data$captureDate) ~ as.integer(.data$year),
-                                                 TRUE ~ as.integer(lubridate::year(.data$captureDate))),
-                  captureMonth = as.integer(lubridate::month(.data$captureDate)),
-                  captureDay = as.integer(lubridate::day(.data$captureDate)),
+    dplyr::mutate(captureDate = NA_character_,
+                  captureYear = as.integer(.data$year),
+                  captureMonth = NA_integer_,
+                  captureDay = NA_integer_,
                   observedSex = NA_character_,
-                  # TODO: Check chick age with data custodian
                   chickAge = NA_integer_,
                   age = "chick")
 
   # 5. Combine capture tables
   captures <- dplyr::bind_rows(pf_parents, pf_chicks, gt_parents, gt_chicks) %>%
-    # TODO: Capture & release are assumed to happen at the same plot
     dplyr::mutate(captureSiteID = .data$siteID,
                   releaseSiteID = .data$siteID,
                   capturePlotID = .data$plotID,
                   releasePlotID = .data$plotID,
                   captureLocationID = .data$locationID,
                   releaseLocationID = .data$locationID,
-                  # TODO: Individuals are assumed to be captured alive, without replacing rings
                   captureAlive = TRUE,
                   releaseAlive = TRUE,
                   capturePhysical = TRUE) %>%
@@ -865,7 +759,7 @@ create_capture_MAY <- function(gt_data,
     dplyr::mutate(captureTagID = dplyr::case_when(dplyr::row_number() == 1 ~ NA_character_,
                                                        #stringr::str_detect(.data$individualID,"^[:digit:]") ~ NA_character_,
                                                        TRUE ~ .data$individualID),
-                  # All releases are assumed to be alive (also see releaseAlive), so no NAs in releaseTagID
+                  # All releases are alive (also see releaseAlive), so no NAs in releaseTagID
                   releaseTagID =.data$individualID) %>%
     dplyr::ungroup() %>%
     # Filter species
@@ -879,7 +773,7 @@ create_capture_MAY <- function(gt_data,
 
   # 6. Add optional variables
   output <- captures %>%
-    {if("exactAge" %in% optional_variables | "minimumAge" %in% optional_variables) calc_age(data = .,
+    {if("exactAge" %in% optional_variables | "minimumAge" %in% optional_variables) calc_age(data = .,############This doesn't work anymore because the function uses capture date
                                                                                             Age = .data$age,
                                                                                             Year = .data$captureYear,
                                                                                             protocol_version = "2.0") %>%
@@ -906,33 +800,27 @@ create_individual_MAY <- function(capture_data,
 
   # Create a list of individuals from capture data
   individuals <- capture_data %>%
-    # Make captureDate
-    dplyr::mutate(captureDate = lubridate::make_date(.data$captureYear, .data$captureMonth, .data$captureDay),
-                  # Convert ages to stages
-                  # According to data custodian:
-                  # - 1: one year old, hatched previous breeding season
-                  # - 2-6: X or more years old
-                  age = dplyr::case_when(.data$age == "chick" ~ "chick",
+    # Convert ages to stages
+    # According to data custodian:
+    # - 1: one year old, hatched previous breeding season
+    # - 2-6: X or more years old
+    dplyr::mutate(age = dplyr::case_when(.data$age == "chick" ~ "chick",
                                          .data$age == "1" ~ "subadult",
                                          TRUE ~ "adult")) %>%
     # Arrange data for each individual chronologically
-    dplyr::arrange(.data$individualID, .data$captureDate, .data$captureYear,
-                   .data$captureMonth, .data$captureDay) %>%
+    dplyr::arrange(.data$individualID, .data$captureYear) %>%
     # For every individual ...
     dplyr::group_by(.data$individualID) %>%
     # ... determine first stage, brood, tag year, month, day, and tag site of each individual
     dplyr::summarise(firstBrood = dplyr::first(.data$broodID),
                      tagStage = dplyr::first(.data$age),
-                     tagDate = dplyr::first(.data$captureDate),
+                     tagDate = NA_character_,
                      tagYear = dplyr::first(.data$captureYear),
                      tagSiteID = dplyr::first(.data$siteID),
-                     # TODO: Check CCCCCC individuals with data custodian
                      speciesID = dplyr::case_when(length(unique(.data$speciesID)) == 2 ~ "CCCCCC",
                                                   TRUE ~ dplyr::first(.data$speciesID))) %>%
-    dplyr::mutate(tagYear = dplyr::case_when(is.na(.data$tagDate) ~ as.integer(.data$tagYear),
-                                              TRUE ~ as.integer(lubridate::year(.data$tagDate))),
-                  tagMonth = as.integer(lubridate::month(.data$tagDate)),
-                  tagDay = as.integer(lubridate::day(.data$tagDate)),
+    dplyr::mutate(tagMonth = NA_integer_,
+                  tagDay = NA_integer_,
                   # Only assign a brood ID if they were first caught as a chick
                   broodIDLaid = dplyr::case_when(tagStage != "chick" ~ NA_character_,
                                                  TRUE ~ .data$firstBrood),
@@ -971,7 +859,7 @@ create_location_MAY <- function(gt_data,
     dplyr::select("studyID", "siteID", "plotID", "locationID", "year") %>%
     dplyr::bind_rows({gt_data %>% dplyr::select("siteID", "plotID", "locationID", "year")})
 
-  # There are no coordinates or box type information
+  # There are no coordinates or box type information for now...waiting for it
   locations <- data %>%
     #dplyr::select("studyID", "siteID", "plotID", "locationID") %>%
     tidyr::drop_na() %>%
@@ -980,7 +868,6 @@ create_location_MAY <- function(gt_data,
                   decimalLongitude = NA_real_,
                   startYear = as.integer(min(.data$year)),
                   endYear = NA_integer_,
-                  # TODO: habitat is set to NA; check with data custodian
                   habitatID = NA_character_) %>%
     dplyr::select(-year)%>%
     dplyr::distinct()
@@ -1027,7 +914,6 @@ create_measurement_MAY <- function(capture_data) {
                   measurementUnit = dplyr::case_when(.data$measurementType == "plumageColour" ~ NA_character_,
                                                      .data$measurementType == "molt" ~ "number of shedding primary feathers",
                                                      TRUE ~ "mm"),
-                  # TODO: Check with data custodian how tarsi are measured
                   measurementMethod = dplyr::case_when(.data$measurementType == "tarsus" ~ "alternative",
                                                        .data$measurementType == "plumageColour" ~ "drost score",
                                                        TRUE ~ NA_character_),
@@ -1062,15 +948,22 @@ create_measurement_MAY <- function(capture_data) {
 
 create_experiment_MAY <- function(brood_data) {
 
-  # No information on broods marked as "experiment"
-  # TODO: Check with data custodian
   experiments <- brood_data %>%
-    # Drop broods without treatmentID
     dplyr::filter(!is.na(.data$treatmentID)) %>%
     dplyr::select("treatmentID",
-                  treatmentStartYear = "observedLayYear",
+                  "observedLayYear",
                   "studyID",
-                  "siteID")
+                  "siteID")%>%
+    dplyr::mutate(experimentType="clutch size or brood size manipulation",
+                  treatmentDetails= dplyr::case_when(.data$treatmentID=="broodsize_enlarged"~"added nestlings to the nest",
+                                                         .data$treatmentID=="broodsize_reduced"~"removed nestlings from the nest",
+                                                         .data$treatmentID=="clutchsize_enlarged"~"added eggs to the nest",
+                                                         .data$treatmentID=="clutchsize_reduced"~ "removed eggs from the nest",
+                                                         .data$treatmentID=="simulated_nest_death"~ "all eggs or nestlings removed from the nest"),
+                  treatmentStartYear = as.integer(1984),
+                  treatmentEndYear = as.integer(1987))%>%
+    dplyr::select(-observedLayYear)%>%
+    dplyr::distinct()
 
   return(experiments)
 
@@ -1106,7 +999,6 @@ retrieve_chickIDs_MAY <- function(chickID) {
   if(!is.na(chickID) & stringr::str_detect(chickID, pattern = "[\\-][:digit:]{2}[\\-][:digit:]{2}")==TRUE){
     chickID <- stringr::str_extract_all(chickID, pattern = "[:alpha:]{2}[:space:][:digit:]{5}[\\-][:digit:]{2}")
   }
-
 
   # Remove spaces, and brackets
   chickID <- stringr::str_remove_all(chickID, pattern = " ")
@@ -1250,7 +1142,6 @@ retrieve_chickIDs_MAY <- function(chickID) {
   }
 
   # Set chick IDs to NA if the number of IDs is unlikely large
-  # TODO: Check with data custodian
   if(length(output) > 15) {
 
     output <- NA
@@ -1263,23 +1154,8 @@ retrieve_chickIDs_MAY <- function(chickID) {
 
 
 #----------------------#
-# TODO: Check whether "line of nest boxes" are indeed plot IDs
-# TODO: Check whether "no string" are consistent & unique IDs
-# TODO: Check whether all individuals are correctly identified as said species (pied flycatcher, or great tit) in their respective files
+
 # TODO: Check individual IDs: many missing "ring series" letters
-# TODO: Check dates notation (<32, >32, 32-35, etc.)
-# TODO: Check brood numbers notation (7+4, (7), etc.)
-# TODO: PF: Is there info on clutch type for pied flycatchers?
-# TODO: GT: Check clutch type interpretation
-# TODO: PF: Check how to interpret "cause of nest's death", and in particular "experiment" - any info on experiments?
-# TODO: Check capture dates of parents (particularly when laying dates are NA)
-# TODO: Check units of age columns
 # TODO: Check chick rings with data custodian (missing letters?)
-# TODO: Check capture dates of chicks (average incubation length, chick age at ringing)
-# TODO: Check chick age
-# TODO: Check whether individuals were only caught/released alive & physically
-# TODO: Check individuals that are recorded as great tit and pied flycatcher
 # TODO: Check location info: location type, start year of boxes, coordinates, habitat type
-# TODO: Check units of measurements
-# TODO: Check tarsus method
-# TODO: Check experiment info
+
