@@ -73,8 +73,6 @@ format_MAL <- function(db = choose_directory(),
     dplyr::mutate(Age = toupper(.data$Age)) %>%
 
     ## Reformat and rename important variables
-    ## TODO: Check on age codes
-    ## TODO: Check on IndvID format - some IDs look like they are not actually band numbers
     dplyr::transmute(PopID = as.character("MAL"),
                      BreedingSeason = as.integer(.data$Year),
 
@@ -89,17 +87,16 @@ format_MAL <- function(db = choose_directory(),
                      Mass = suppressWarnings(as.numeric(.data$MassG)),
                      Tarsus = suppressWarnings(round(as.numeric(.data$TarsusMm),1)),
                      WingLength = suppressWarnings(as.numeric(.data$WingMm)),
-                     IndvID =  dplyr::case_when(stringr::str_detect(.data$Id, "\\-")  ~ NA_character_,
+                     IndvID =  dplyr::case_when(stringr::str_detect(.data$Id, "\\-")  ~ NA_character_,#remove IDS in which there is a dash followed by the year.
                                                 TRUE ~ .data$Id),
-                     Age_observed = dplyr::case_when(.data$Age == "P" ~ 1L,
-                                                     .data$Age == "2" ~ 1L,
+                     Age_observed = dplyr::case_when(.data$Age == "P" ~ 1L,#Pullus
+                                                     .data$Age == "2" ~ 5L,#2= 2 calendar years (1 year-old)
                                                      .data$Age == "2K" ~ 5L,
-                                                     .data$Age == "2K+" ~ 5L,
-                                                     .data$Age == "3" ~ 5L,
-                                                     .data$Age == "3K" ~ 5L,
-                                                     .data$Age == "3K+" ~ 5L),
-                     Sex_observed = dplyr::case_when(.data$Sex == "FEMALE" ~ "F",#TODO: Check if this is the genetic sex for chicks
-                                              .data$Sex == "MALE" ~ "M",
+                                                     .data$Age == "2K+" ~ 4L,#unsure if 2 calendar years (1 year-old) or older
+                                                     .data$Age == "3" ~ 6L,#3= 3 calendar years (2 years-old)
+                                                     .data$Age == "3K" ~ 6L,
+                                                     .data$Age == "3K+" ~ 6L),
+                     Sex_observed = dplyr::case_when(.data$Age == "P" ~ NA_character_,#there is no genetic sexing so it is unclear why some non-recruited chicks are marked as "FEMALE" or "MALE".set as NA
                                               TRUE ~ as.character(.data$Sex)),
                      ObserverID = .data$Handler) %>%
     #remove instances when species not known
@@ -339,6 +336,9 @@ create_brood_MAL <- function(nest_data, rr_data) {
     dplyr::left_join(rr_data_brood_ads, by = "Brood_rec") %>%
     dplyr::left_join(rr_data_brood_cks, by = "Brood_rec") %>%
 
+    #Add measurement method
+    dplyr::mutate(OriginalTarsusMethod="Oxford")%>%
+
     ## Keep only necessary columns
     dplyr::select(dplyr::contains(names(brood_data_template))) %>%
 
@@ -387,7 +387,7 @@ create_capture_MAL <- function(rr_data) {
                   CapturePlot = .data$Plot,
                   CaptureAlive = TRUE,
                   ReleaseAlive = TRUE,
-
+                  OriginalTarsusMethod="Oxford",
                   ## Set ReleasePopID to NA if ReleaseAlive is FALSE, otherwise same as CapturePopID
                   ReleasePopID = dplyr::case_when(.data$ReleaseAlive == FALSE ~ NA_character_,
                                                   TRUE ~ as.character(.data$CapturePopID)),
