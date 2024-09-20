@@ -32,7 +32,7 @@ test_that("Individual data returns an expected outcome...", {
   expect_equal(subset(MTA_data, IndvID == "N167082")$Species, "PARMAJ")
   expect_equal(subset(MTA_data, IndvID == "N167082")$RingAge, "adult")
   expect_equal(subset(MTA_data, IndvID == "N167082")$Sex_genetic, NA_character_)
-  expect_equal(subset(MTA_data, IndvID == "N167082")$BroodIDLaid, NA_character_)#not correct.fix it
+  expect_equal(subset(MTA_data, IndvID == "N167082")$BroodIDLaid, NA_character_)
   expect_equal(subset(MTA_data, IndvID == "N167082")$RingSeason, 2013)
 
   # Great tit male ringed as adult
@@ -44,7 +44,7 @@ test_that("Individual data returns an expected outcome...", {
   expect_equal(subset(MTA_data, IndvID == "N203843")$RingSeason, 2014)
 
   #Great tit female caught as chick
-  expect_equal(subset(MTA_data, IndvID == "N203930")$Sex_calculated, "F")#should be NA
+  expect_equal(subset(MTA_data, IndvID == "N203930")$Sex_calculated, "F")
   expect_equal(subset(MTA_data, IndvID == "N203930")$Sex_genetic, NA_character_)
   expect_equal(subset(MTA_data, IndvID == "N203930")$Species, "PARMAJ")
   expect_equal(subset(MTA_data, IndvID == "N203930")$BroodIDLaid, "523")
@@ -148,7 +148,7 @@ test_that("Brood_data returns an expected outcome...", {
   ## PARCAE  nest 2829 in 2021
   expect_equal(subset(MTA_data,
                       BroodID == "1278" &
-                        BreedingSeason == 2017)$Species, "CYACAE")#STill PARCAE
+                        BreedingSeason == 2017)$Species, "CYACAE")
   expect_equal(subset(MTA_data,
                       BroodID == "1278" &
                         BreedingSeason == 2017)$FemaleID,NA_character_ )
