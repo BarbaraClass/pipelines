@@ -96,8 +96,10 @@ format_MAL <- function(db = choose_directory(),
                                                      .data$Age == "3" ~ 6L,#3= 3 calendar years (2 years-old)
                                                      .data$Age == "3K" ~ 6L,
                                                      .data$Age == "3K+" ~ 6L),
-                     Sex_observed = dplyr::case_when(.data$Age == "P" ~ NA_character_,#there is no genetic sexing so it is unclear why some non-recruited chicks are marked as "FEMALE" or "MALE".set as NA
+                     Sex_observed = dplyr::case_when(.data$Age == "P" ~ NA_character_,
                                               TRUE ~ as.character(.data$Sex)),
+                     Sex_genetic=dplyr::case_when(.data$Sex== "MALE"~"M",
+                                                  .data$Sex== "FEMALE"~"F"),
                      ObserverID = .data$Handler) %>%
     #remove instances when species not known
     dplyr::filter(!is.na(.data$Species))%>%
@@ -362,7 +364,7 @@ create_brood_MAL <- function(nest_data, rr_data) {
 
 
   ## Check column classes
-  purrr::map_df(brood_data_template, class) == purrr::map_df(Brood_data, class)
+  #purrr::map_df(brood_data_template, class) == purrr::map_df(Brood_data, class)
 
   return(Brood_data)
 
@@ -441,9 +443,11 @@ create_capture_MAL <- function(rr_data) {
 #'
 #' @param Brood_data Brood data output from Malmo, Sweden.
 #'
+#' @param rr_data Data frame of ringing records from Malmo, Sweden.
+#'
 #' @return A data frame.
 
-create_individual_MAL <- function(Capture_data, Brood_data){
+create_individual_MAL <- function(Capture_data, Brood_data,rr_data){
 
   Individual_data <- Capture_data %>%
 
@@ -466,8 +470,6 @@ create_individual_MAL <- function(Capture_data, Brood_data){
                                                       return("C")
                                                     }
                                                   }),
-
-                  Sex_genetic = NA_character_,
 
                   Species = purrr::map_chr(.x = list(unique(stats::na.omit(.data$Species))),
                                            .f = ~{
@@ -499,6 +501,7 @@ create_individual_MAL <- function(Capture_data, Brood_data){
 
     ## Only join BroodID to chick records
     dplyr::left_join(Brood_data %>%
+                       dplyr::filter(!is.na(.data$BroodSize_observed))%>%#do not include first broods that did not hatch for the merging
                        dplyr::mutate(brood_record = "yes") %>%
                        dplyr::select(.data$brood_record,
                                      .data$BreedingSeason,
@@ -509,6 +512,12 @@ create_individual_MAL <- function(Capture_data, Brood_data){
                      by = c("brood_record", "BreedingSeason", "Species", "CapturePlot" = "Plot", "LocationID")) %>%
 
     dplyr::rename(BroodIDLaid = .data$BroodID) %>%
+
+
+    ## Only join genetic sex to chick records
+    dplyr::left_join(rr_data %>%
+                       dplyr::filter(!is.na(.data$Sex_genetic))%>%
+                       dplyr::select(IndvID,Sex_genetic)) %>%
 
     ## Add BroodIDFledged
     dplyr::mutate(BroodIDFledged = .data$BroodIDLaid) %>%
